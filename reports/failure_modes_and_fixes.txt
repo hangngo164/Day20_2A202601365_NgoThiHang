@@ -1,0 +1,118 @@
+================================================================================
+LAB 20: MULTI-AGENT RESEARCH SYSTEM
+BÁO CÁO PHÂN TÍCH FAILURE MODES VÀ CÁCH FIX (MITIGATIONS)
+Học viên: Ngô Thị Hằng
+Repository: https://github.com/hangngo164/Day20_2A202601365_NgoThiHang
+================================================================================
+
+I. TỔNG QUAN
+Trong kiến trúc Multi-Agent (Supervisor + Researcher + Analyst + Writer + Critic),
+hệ thống được chia nhỏ thành nhiều tác tử chuyên biệt giao tiếp qua Shared State.
+Tuy mang lại chất lượng câu trả lời vượt trội và có trích dẫn rõ ràng, hệ thống
+multi-agent phải đối mặt với nhiều rủi ro vận hành (failure modes) hơn đáng kể
+so với kiến trúc Single-Agent truyền thống.
+
+Dưới đây là 5 Failure Modes tiêu biểu đã được phân tích và xử lý triệt để trong dự án.
+
+--------------------------------------------------------------------------------
+II. CHI TIẾT CÁC FAILURE MODES VÀ GIẢI PHÁP XỬ LÝ (FIX / MITIGATION)
+--------------------------------------------------------------------------------
+
+1. FAILURE MODE 1: VÒNG LẶP ĐỊNH TUYẾN VÔ HẠN (INFINITE ROUTING LOOP)
+--------------------------------------------------------------------------------
+- Hiện tượng: Supervisor liên tục chuyển quyền qua lại giữa các worker agent
+  (ví dụ: Supervisor -> Researcher -> Supervisor -> Researcher...) mà không thể
+  kết thúc để chuyển sang bước Viết (Writer) hoặc Hoàn thành (Done).
+- Nguyên nhân: 
+  + LLM điều phối trong Supervisor nhận diện chưa đủ ngữ cảnh hoặc prompt định tuyến
+    không có ràng buộc điều kiện dừng rõ ràng.
+  + Trạng thái trung gian không được cập nhật đúng khiến Supervisor nghĩ rằng
+    vẫn chưa có dữ liệu.
+- Hậu quả: Tiêu tốn vô hạn token API, gây treo hệ thống (hang) và phát sinh chi phí lớn.
+- Giải pháp (Fix / Mitigation):
+  + Guardrail cứng: Cài đặt biến `MAX_ITERATIONS = 6` trong cấu hình (Settings).
+  + Kiểm tra ngưỡng lặp: Trong `SupervisorAgent.run()`, nếu `state.iteration >= max_iterations`,
+    hệ thống tự động ép trạng thái `route = 'done'` và tổng hợp toàn bộ dữ liệu hiện có
+    thay vì tiếp tục gọi LLM định tuyến.
+  + Heuristic Fallback: Nếu kết quả trả về từ Supervisor không hợp lệ, hệ thống dùng
+    luật xác định (Deterministic Rule): Chưa có notes -> Researcher; Chưa có analysis
+    -> Analyst; Chưa có final answer -> Writer; Đã có answer -> Done.
+
+--------------------------------------------------------------------------------
+2. FAILURE MODE 2: LỖI TIMEOUT VÀ RATE LIMIT KHI GỌI LLM API
+--------------------------------------------------------------------------------
+- Hiện tượng: Quá trình thực thi bị ngắt đột ngột (crash) với lỗi HTTP 429 (Rate Limit)
+  hoặc Timeout (APITimeoutError) từ phía OpenAI API.
+- Nguyên nhân: Hệ thống multi-agent thực hiện nhiều lệnh gọi LLM liên tiếp trong thời gian
+  ngắn (Supervisor -> Researcher -> Analyst -> Writer -> Critic), dễ chạm ngưỡng giới hạn
+  tần suất (RPM/TPM) hoặc gặp độ trễ mạng chập chờn.
+- Hậu quả: Toàn bộ pipeline bị hủy, dữ liệu các bước trước đó trong state bị mất.
+- Giải pháp (Fix / Mitigation):
+  + Triển khai cơ chế Retry với Exponential Backoff thông qua thư viện `tenacity`:
+    Áp dụng decorator `@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))`
+    lên phương thức `complete()` của `LLMClient`.
+  + Bắt lỗi chuyên biệt: Chỉ thử lại với các ngoại lệ mạng/tải (`APIError`, `APITimeoutError`,
+    `RateLimitError`), tránh thử lại vô ích khi gặp lỗi cấu hình sai key (401/403).
+  + Thiết lập timeout cục bộ `timeout=45s` cho mỗi request để tránh treo tiến trình.
+
+--------------------------------------------------------------------------------
+3. FAILURE MODE 3: MẤT KẾT NỐI / LỖI DỊCH VỤ TÌM KIẾM NGOÀI (SEARCH API FAILURE)
+--------------------------------------------------------------------------------
+- Hiện tượng: Khi Researcher gọi Tavily Search API để lấy tài liệu thực tế, API có thể
+  hết quota, sai key hoặc mất mạng.
+- Nguyên nhân: Phụ thuộc vào dịch vụ bên thứ ba (Third-party Web Search).
+- Hậu quả: Researcher không có tài liệu nguồn (`sources` rỗng), dẫn đến việc Analyst
+  và Writer không có thông tin để phân tích và viết bài.
+- Giải pháp (Fix / Mitigation):
+  + Mock Fallback Provider: Trong `SearchClient.search()`, kiểm tra nếu `TAVILY_API_KEY`
+    không tồn tại hoặc gọi API thất bại, tự động chuyển sang tập dữ liệu nghiên cứu mẫu
+    (Mock Documents) đã chuẩn bị sẵn về chủ đề GraphRAG và Multi-Agent.
+  + Đảm bảo pipeline luôn hoạt động thông suốt (Graceful Degradation) và ghi nhận
+    cảnh báo vào `state.errors` để phục vụ việc giám sát.
+
+--------------------------------------------------------------------------------
+4. FAILURE MODE 4: ẢO GIÁC NGUỒN TRÍCH DẪN (HALLUCINATED CITATIONS & FACT DRIFT)
+--------------------------------------------------------------------------------
+- Hiện tượng: Writer tạo ra các số trích dẫn giả mạo (ví dụ: [6], [7]) không hề có
+  trong danh sách 5 nguồn tài liệu ban đầu do Researcher thu thập, hoặc bóp méo
+  kết quả phân tích của Analyst.
+- Nguyên nhân: Tính chất sinh từ ngẫu nhiên (Stochastic Generation) của LLM khi viết
+  các bài tổng hợp dài (~500 từ) dễ dẫn tới việc tự suy diễn nguồn trích dẫn.
+- Hậu quả: Văn bản mất đi tính chính xác học thuật và không thể kiểm chứng được nguồn tin.
+- Giải pháp (Fix / Mitigation):
+  + Tách biệt vai trò Writer và Critic: Thêm `CriticAgent` hoạt động như một bên
+    kiểm định độc lập sau khi Writer hoàn thành.
+  + Đánh giá chéo: Critic đối chiếu trực tiếp danh sách `state.sources` với nội dung
+    `final_answer`, tính toán chỉ số `Citation Coverage` và chấm điểm `Fact-checking`.
+  + Structured Prompts: Prompt của Writer yêu cầu bắt buộc trích dẫn đúng định dạng
+    `[1]`, `[2]`,... khớp với index của nguồn tài liệu trong Shared State.
+
+--------------------------------------------------------------------------------
+5. FAILURE MODE 5: LỖI CẤU HÌNH HOST CỦA OBSERVABILITY (LANGFUSE HOST MISMATCH)
+--------------------------------------------------------------------------------
+- Hiện tượng: Hệ thống chạy tốt logic Agent nhưng báo lỗi `401 Unauthorized: Confirm
+  that you've configured the correct host` từ phía Langfuse và không đẩy được Trace lên UI.
+- Nguyên nhân: Tài khoản người dùng nằm trên máy chủ Langfuse US Cloud (`https://us.cloud.langfuse.com`),
+  nhưng mặc định SDK hoặc file config lại trỏ về EU Cloud (`https://cloud.langfuse.com`),
+  đồng thời biến môi trường trong file `.env` đặt tên là `LANGFUSE_BASE_URL` thay vì `LANGFUSE_HOST`.
+- Hậu quả: Mất toàn bộ khả năng quan sát (observability), không đo lường được chi phí,
+  thời gian chạy của từng Agent.
+- Giải pháp (Fix / Mitigation):
+  + Sử dụng `AliasChoices("LANGFUSE_HOST", "LANGFUSE_BASE_URL")` trong `pydantic-settings`
+    tại `core/config.py` để nhận diện cả 2 cách đặt tên biến môi trường.
+  + Thêm cơ chế xác thực an toàn `client.auth_check()` trước khi gửi traces.
+  + Bổ sung hàm `flush_traces()` xuất link trực tiếp đến trang quản trị Langfuse
+    để người dùng có thể nhấp chuột kiểm tra ngay lập tức.
+
+--------------------------------------------------------------------------------
+III. TỔNG KẾT BÀI HỌC KINH NGHIỆM (KEY TAKEAWAYS)
+--------------------------------------------------------------------------------
+1. Guardrails là bắt buộc: Không bao giờ triển khai Multi-Agent vào thực tế mà thiếu
+   giới hạn vòng lặp (`MAX_ITERATIONS`), thời gian chờ (`TIMEOUT`) và xử lý lỗi (`RETRY`).
+2. Tách bạch vai trò (Separation of Concerns): Phân chia ranh giới rõ ràng giữa người
+   tìm kiếm (Researcher), người phản biện/phân tích (Analyst), người hành văn (Writer)
+   và người duyệt (Critic) giúp giảm thiểu tối đa hiện tượng "loãng ngữ cảnh" (Context Pollution).
+3. Khả năng quan sát (Observability First): Việc gắn nhãn rõ loại quan sát (Observation Types:
+   `agent`, `tool`, `generation`) lên từng bước thực thi là chìa khóa để phân tích lỗi,
+   tối ưu hóa độ trễ và kiểm soát chi phí token trong môi trường Production.
+================================================================================
