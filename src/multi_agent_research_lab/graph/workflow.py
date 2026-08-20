@@ -34,35 +34,57 @@ class MultiAgentWorkflow:
     def _supervisor_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Supervisor decides the next route."""
         state = ResearchState(**state_dict)
-        with trace_span("supervisor", {"iteration": state.iteration}):
+        with trace_span(
+            name="supervisor",
+            attributes={"iteration": state.iteration},
+            as_type="agent",
+            input={"route_history": state.route_history, "iteration": state.iteration},
+        ):
             result = self._supervisor.run(state)
         return result.model_dump()
 
     def _researcher_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Researcher searches and creates notes."""
         state = ResearchState(**state_dict)
-        with trace_span("researcher", {"query": state.request.query[:50]}):
+        with trace_span(
+            name="researcher",
+            attributes={"query": state.request.query[:50]},
+            as_type="agent",
+            input={"query": state.request.query},
+        ):
             result = self._researcher.run(state)
         return result.model_dump()
 
     def _analyst_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Analyst extracts insights from research notes."""
         state = ResearchState(**state_dict)
-        with trace_span("analyst"):
+        with trace_span(
+            name="analyst",
+            as_type="agent",
+            input={"research_notes_length": len(state.research_notes) if state.research_notes else 0},
+        ):
             result = self._analyst.run(state)
         return result.model_dump()
 
     def _writer_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Writer synthesizes the final answer."""
         state = ResearchState(**state_dict)
-        with trace_span("writer"):
+        with trace_span(
+            name="writer",
+            as_type="agent",
+            input={"analysis_notes_length": len(state.analysis_notes) if state.analysis_notes else 0},
+        ):
             result = self._writer.run(state)
         return result.model_dump()
 
     def _critic_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Critic reviews the final answer."""
         state = ResearchState(**state_dict)
-        with trace_span("critic"):
+        with trace_span(
+            name="critic",
+            as_type="agent",
+            input={"final_answer_length": len(state.final_answer) if state.final_answer else 0},
+        ):
             result = self._critic.run(state)
         return result.model_dump()
 
@@ -129,7 +151,12 @@ class MultiAgentWorkflow:
 
         logger.info("Starting multi-agent workflow | query=%s", state.request.query[:80])
 
-        with trace_span("multi_agent_workflow", {"query": state.request.query}):
+        with trace_span(
+            name="multi_agent_workflow",
+            attributes={"query": state.request.query},
+            as_type="span",
+            input={"query": state.request.query},
+        ) as root_span:
             graph = self.build()
             compiled = graph.compile()
 

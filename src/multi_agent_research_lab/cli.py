@@ -18,7 +18,7 @@ from multi_agent_research_lab.evaluation.benchmark import run_benchmark
 from multi_agent_research_lab.evaluation.report import render_markdown_report
 from multi_agent_research_lab.graph.workflow import MultiAgentWorkflow
 from multi_agent_research_lab.observability.logging import configure_logging
-from multi_agent_research_lab.observability.tracing import trace_span, flush_traces
+from multi_agent_research_lab.observability.tracing import trace_span, flush_traces, get_current_trace_url
 from multi_agent_research_lab.services.llm_client import LLMClient
 from multi_agent_research_lab.services.storage import LocalArtifactStore
 
@@ -36,6 +36,15 @@ console = Console(force_terminal=True)
 def _init() -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
+
+
+def _display_trace_info(trace_url: str | None) -> None:
+    if trace_url:
+        console.print(Panel.fit(
+            f"[bold cyan]Langfuse Trace URL:[/bold cyan] [link={trace_url}]{trace_url}[/link]",
+            title="Observability",
+            border_style="magenta",
+        ))
 
 
 def _parse_query(query: str) -> ResearchQuery:
@@ -66,7 +75,12 @@ def _run_baseline(query: str) -> ResearchState:
     )
 
     try:
-        with trace_span("baseline_single_agent", {"query": query}):
+        with trace_span(
+            name="baseline_single_agent",
+            attributes={"query": query},
+            as_type="span",
+            input={"query": query},
+        ):
             response = llm.complete(system_prompt, query)
             state.final_answer = response.content
             state.iteration = 1
@@ -104,7 +118,8 @@ def baseline(
         title="Single-Agent Baseline Result",
         border_style="green",
     ))
-    flush_traces()
+    trace_url = flush_traces()
+    _display_trace_info(trace_url)
 
 
 @app.command("multi-agent")
@@ -144,7 +159,8 @@ def multi_agent(
     for result in state.agent_results:
         console.print(f"  [dim]{result.agent}[/dim]: {result.content[:80]}...")
 
-    flush_traces()
+    trace_url = flush_traces()
+    _display_trace_info(trace_url)
 
 
 @app.command()
@@ -188,7 +204,8 @@ def benchmark(
     # Display report
     console.print(Markdown(report_md))
 
-    flush_traces()
+    trace_url = flush_traces()
+    _display_trace_info(trace_url)
 
 
 if __name__ == "__main__":

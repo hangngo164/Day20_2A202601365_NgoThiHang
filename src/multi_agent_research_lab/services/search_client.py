@@ -4,6 +4,7 @@ import logging
 
 from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.core.schemas import SourceDocument
+from multi_agent_research_lab.observability.tracing import trace_span
 
 logger = logging.getLogger(__name__)
 
@@ -20,12 +21,22 @@ class SearchClient:
 
         Uses Tavily API when key is available, otherwise returns mock results.
         """
+        with trace_span(
+            name="search_documents",
+            as_type="tool",
+            input={"query": query, "max_results": max_results},
+        ) as span:
+            if self._api_key and self._api_key.strip():
+                docs = self._tavily_search(query, max_results)
+            else:
+                logger.warning("No TAVILY_API_KEY found, using mock search results")
+                docs = self._mock_search(query, max_results)
 
-        if self._api_key and self._api_key.strip():
-            return self._tavily_search(query, max_results)
-        else:
-            logger.warning("No TAVILY_API_KEY found, using mock search results")
-            return self._mock_search(query, max_results)
+            span["output"] = {
+                "num_results": len(docs),
+                "titles": [d.title for d in docs],
+            }
+            return docs
 
     def _tavily_search(self, query: str, max_results: int) -> list[SourceDocument]:
         """Search using Tavily API."""
