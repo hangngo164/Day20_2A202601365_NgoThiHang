@@ -1,38 +1,69 @@
-# Design Template
+# Design Document: Multi-Agent Research System
 
-## Problem
+## 1. Task Description
 
-TODO(student): Viết task cụ thể hệ thống cần xử lý.
+Hệ thống cần xử lý **research queries phức tạp** bằng cách phân chia công việc cho nhiều agent chuyên biệt:
+- Tìm kiếm và thu thập thông tin từ web
+- Phân tích và đánh giá chất lượng thông tin
+- Tổng hợp thành bài viết có trích dẫn
+- Kiểm tra sự chính xác (fact-check)
 
-## Why multi-agent?
+## 2. Why Multi-Agent?
 
-TODO(student): Giải thích vì sao single-agent chưa đủ.
+Single-agent gặp hạn chế khi:
+- **Context window overload**: Một agent phải giữ tất cả context (search, analyze, write) → giảm chất lượng
+- **No separation of concerns**: Khó debug khi không biết agent fail ở bước nào
+- **No iterative refinement**: Single-agent viết 1 lần, không có review/feedback loop
+- **Limited specialization**: Mỗi task cần system prompt và temperature khác nhau
 
-## Agent roles
+Multi-agent giải quyết bằng cách:
+- Mỗi agent có **role rõ ràng** với prompt tối ưu
+- **Shared state** cho phép truyền kết quả giữa agents
+- **Supervisor** điều phối và enforce guardrails
+- **Critic** cung cấp quality assurance
 
-| Agent | Responsibility | Input | Output | Failure mode |
-|---|---|---|---|---|
-| Supervisor | TODO | TODO | TODO | TODO |
-| Researcher | TODO | TODO | TODO | TODO |
-| Analyst | TODO | TODO | TODO | TODO |
-| Writer | TODO | TODO | TODO | TODO |
+## 3. Agent Roles
 
-## Shared state
+| Agent | Input | Output | Model Config |
+|---|---|---|---|
+| Supervisor | Full state | Route decision | gpt-4o-mini, temp=0.0 |
+| Researcher | Query | sources, research_notes | gpt-4o-mini, temp=0.2 |
+| Analyst | research_notes | analysis_notes | gpt-4o-mini, temp=0.1 |
+| Writer | research_notes + analysis_notes | final_answer | gpt-4o-mini, temp=0.4 |
+| Critic | final_answer + sources | quality review | gpt-4o-mini, temp=0.1 |
 
-TODO(student): Liệt kê fields và lý do cần field đó.
+## 4. Shared State Fields
 
-## Routing policy
+| Field | Type | Lý do cần |
+|---|---|---|
+| `request` | ResearchQuery | Giữ query gốc và config |
+| `iteration` | int | Track loop count cho max_iterations |
+| `route_history` | list[str] | Debug routing decisions |
+| `sources` | list[SourceDocument] | Researcher tạo, Writer/Critic dùng |
+| `research_notes` | str | Researcher output → Analyst input |
+| `analysis_notes` | str | Analyst output → Writer input |
+| `final_answer` | str | Writer output → Critic review |
+| `agent_results` | list[AgentResult] | Audit trail mỗi agent |
+| `trace` | list[dict] | Observability events |
+| `errors` | list[str] | Error tracking |
 
-TODO(student): Vẽ hoặc mô tả graph.
+## 5. Graph Flow
 
-## Guardrails
+```text
+START → Supervisor → [researcher] → Supervisor → [analyst] → Supervisor → [writer] → Supervisor → [critic] → END
+```
 
-- Max iterations:
-- Timeout:
-- Retry:
-- Fallback:
-- Validation:
+- Supervisor dùng LLM để quyết định route, với heuristic fallback
+- Max 6 iterations, timeout 60s
+- Conditional edges từ supervisor → worker nodes
+- Critic chạy 1 lần sau khi writer hoàn thành
 
-## Benchmark plan
+## 6. Benchmark Plan
 
-TODO(student): Liệt kê query, metric, expected outcome.
+| Query | Metric | Expected |
+|---|---|---|
+| "Research GraphRAG" | Latency | Multi 3-5x slower |
+| "Research GraphRAG" | Quality (0-10) | Multi 1-3 points higher |
+| "Research GraphRAG" | Cost | Multi 3-5x more |
+| "Compare single vs multi" | Citation coverage | Multi >60% |
+| "Summarize guardrails" | Failure rate | Both <10% |
