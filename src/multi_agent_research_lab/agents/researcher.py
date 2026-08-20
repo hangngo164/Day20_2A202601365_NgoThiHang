@@ -10,7 +10,8 @@ from multi_agent_research_lab.services.search_client import SearchClient
 
 logger = logging.getLogger(__name__)
 
-RESEARCH_SYSTEM_PROMPT = """You are a research assistant. Given search results about a topic, create concise, well-organized research notes.
+RESEARCH_SYSTEM_PROMPT = """You are a research assistant.
+Given search results about a topic, create concise, well-organized research notes.
 
 Your notes should:
 1. Summarize key findings from each source

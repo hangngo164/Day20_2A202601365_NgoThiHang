@@ -5,10 +5,10 @@ Production note: agents should depend on this interface instead of importing an 
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
-from openai import OpenAI
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from openai import APIError, APITimeoutError, RateLimitError
+from openai import APIError, APITimeoutError, OpenAI, RateLimitError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.observability.tracing import trace_generation
@@ -50,10 +50,14 @@ class LLMClient:
         Uses OpenAI ChatCompletion with retry, timeout, token logging, and Langfuse tracing.
         """
 
-        logger.info("LLM request | model=%s | system_len=%d | user_len=%d",
-                     self._model, len(system_prompt), len(user_prompt))
+        logger.info(
+            "LLM request | model=%s | system_len=%d | user_len=%d",
+            self._model,
+            len(system_prompt),
+            len(user_prompt),
+        )
 
-        messages = [
+        messages: Any = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
@@ -86,7 +90,8 @@ class LLMClient:
 
             logger.info(
                 "LLM response | tokens_in=%s | tokens_out=%s | cost=$%s",
-                input_tokens, output_tokens,
+                input_tokens,
+                output_tokens,
                 f"{cost_usd:.6f}" if cost_usd else "N/A",
             )
 

@@ -9,7 +9,8 @@ from multi_agent_research_lab.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
-CRITIC_SYSTEM_PROMPT = """You are a fact-checking critic. Review the final answer against the source material.
+CRITIC_SYSTEM_PROMPT = """You are a fact-checking critic.
+Review the final answer against the source material.
 
 Evaluate:
 1. **Citation Coverage**: Are all major claims supported by cited sources? (percentage estimate)

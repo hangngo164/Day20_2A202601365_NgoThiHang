@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from time import perf_counter
 
-from multi_agent_research_lab.core.schemas import AgentName, BenchmarkMetrics
+from multi_agent_research_lab.core.schemas import BenchmarkMetrics
 from multi_agent_research_lab.core.state import ResearchState
 
 logger = logging.getLogger(__name__)
@@ -21,12 +21,10 @@ def run_benchmark(
     """
 
     started = perf_counter()
-    errors_before = 0
 
     try:
         state = runner(query)
         latency = perf_counter() - started
-        errors_after = len(state.errors) if state else 0
     except Exception as e:
         latency = perf_counter() - started
         logger.error("Benchmark run '%s' failed: %s", run_name, e)
@@ -68,7 +66,9 @@ def run_benchmark(
 
     logger.info(
         "Benchmark '%s' complete | latency=%.2fs | quality=%.1f | cost=$%s",
-        run_name, latency, quality_score or 0,
+        run_name,
+        latency,
+        quality_score or 0,
         f"{estimated_cost:.6f}" if estimated_cost else "N/A",
     )
 

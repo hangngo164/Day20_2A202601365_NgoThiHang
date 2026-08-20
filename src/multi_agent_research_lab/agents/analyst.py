@@ -9,7 +9,8 @@ from multi_agent_research_lab.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
-ANALYST_SYSTEM_PROMPT = """You are an expert research analyst. Given research notes, produce a structured analysis.
+ANALYST_SYSTEM_PROMPT = """You are an expert research analyst.
+Given research notes, produce a structured analysis.
 
 Your analysis must include:
 1. **Key Claims**: List the 3-5 most important claims or findings

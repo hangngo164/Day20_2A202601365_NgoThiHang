@@ -38,49 +38,59 @@ def render_markdown_report(metrics: list[BenchmarkMetrics]) -> str:
         baseline = metrics[0]
         multi = metrics[1]
 
-        lines.extend([
-            "",
-            "## Comparative Analysis",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Comparative Analysis",
+                "",
+            ]
+        )
 
         # Latency comparison
         latency_diff = multi.latency_seconds - baseline.latency_seconds
         latency_ratio = multi.latency_seconds / max(baseline.latency_seconds, 0.01)
-        lines.append(f"- **Latency**: Multi-agent is {latency_ratio:.1f}x "
-                      f"{'slower' if latency_diff > 0 else 'faster'} "
-                      f"({latency_diff:+.2f}s)")
+        lines.append(
+            f"- **Latency**: Multi-agent is {latency_ratio:.1f}x "
+            f"{'slower' if latency_diff > 0 else 'faster'} "
+            f"({latency_diff:+.2f}s)"
+        )
 
         # Quality comparison
         if baseline.quality_score is not None and multi.quality_score is not None:
             quality_diff = multi.quality_score - baseline.quality_score
-            lines.append(f"- **Quality**: Multi-agent scored {quality_diff:+.1f} points "
-                          f"{'higher' if quality_diff > 0 else 'lower'}")
+            lines.append(
+                f"- **Quality**: Multi-agent scored {quality_diff:+.1f} points "
+                f"{'higher' if quality_diff > 0 else 'lower'}"
+            )
 
         # Cost comparison
         if baseline.estimated_cost_usd is not None and multi.estimated_cost_usd is not None:
             cost_diff = multi.estimated_cost_usd - baseline.estimated_cost_usd
-            lines.append(f"- **Cost**: Multi-agent costs ${cost_diff:+.4f} "
-                          f"{'more' if cost_diff > 0 else 'less'}")
+            lines.append(
+                f"- **Cost**: Multi-agent costs ${cost_diff:+.4f} "
+                f"{'more' if cost_diff > 0 else 'less'}"
+            )
 
-        lines.extend([
-            "",
-            "## Key Findings",
-            "",
-            "1. **Multi-agent systems** provide structured decomposition of complex research tasks",
-            "2. **Trade-off**: Higher quality output comes at the cost of increased latency and API calls",
-            "3. **Reliability**: The supervisor routing pattern ensures graceful degradation through fallbacks",
-            "",
-            "## Failure Modes & Mitigations",
-            "",
-            "| Failure Mode | Impact | Mitigation |",
-            "|---|---|---|",
-            "| LLM API timeout | Agent hangs | tenacity retry with exponential backoff |",
-            "| Invalid routing decision | Infinite loop | max_iterations guard + heuristic fallback |",
-            "| Search API failure | No sources | Mock fallback data |",
-            "| Hallucinated citations | Inaccurate output | Critic agent fact-checking |",
-            "| Token limit exceeded | Truncated output | Chunk research notes |",
-        ])
+        lines.extend(
+            [
+                "",
+                "## Key Findings",
+                "",
+                "1. **Multi-agent systems**: Structured decomposition of complex tasks",
+                "2. **Trade-off**: Higher quality at the cost of higher latency and API calls",
+                "3. **Reliability**: Supervisor routing ensures graceful degradation",
+                "",
+                "## Failure Modes & Mitigations",
+                "",
+                "| Failure Mode | Impact | Mitigation |",
+                "|---|---|---|",
+                "| LLM API timeout | Agent hangs | tenacity retry with exponential backoff |",
+                "| Invalid routing decision | Infinite loop | max_iterations guard + fallback |",
+                "| Search API failure | No sources | Mock fallback data |",
+                "| Hallucinated citations | Inaccurate output | Critic agent fact-checking |",
+                "| Token limit exceeded | Truncated output | Chunk research notes |",
+            ]
+        )
 
     lines.append("")
     return "\n".join(lines)

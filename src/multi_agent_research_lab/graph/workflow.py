@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from langgraph.graph import StateGraph, END
+from langgraph.graph import END, StateGraph
 
 from multi_agent_research_lab.agents.analyst import AnalystAgent
 from multi_agent_research_lab.agents.critic import CriticAgent
@@ -58,10 +58,11 @@ class MultiAgentWorkflow:
     def _analyst_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Analyst extracts insights from research notes."""
         state = ResearchState(**state_dict)
+        notes_len = len(state.research_notes) if state.research_notes else 0
         with trace_span(
             name="analyst",
             as_type="agent",
-            input={"research_notes_length": len(state.research_notes) if state.research_notes else 0},
+            input={"research_notes_length": notes_len},
         ):
             result = self._analyst.run(state)
         return result.model_dump()
@@ -69,10 +70,11 @@ class MultiAgentWorkflow:
     def _writer_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Writer synthesizes the final answer."""
         state = ResearchState(**state_dict)
+        analysis_len = len(state.analysis_notes) if state.analysis_notes else 0
         with trace_span(
             name="writer",
             as_type="agent",
-            input={"analysis_notes_length": len(state.analysis_notes) if state.analysis_notes else 0},
+            input={"analysis_notes_length": analysis_len},
         ):
             result = self._writer.run(state)
         return result.model_dump()
@@ -80,10 +82,11 @@ class MultiAgentWorkflow:
     def _critic_node(self, state_dict: dict[str, Any]) -> dict[str, Any]:
         """Critic reviews the final answer."""
         state = ResearchState(**state_dict)
+        ans_len = len(state.final_answer) if state.final_answer else 0
         with trace_span(
             name="critic",
             as_type="agent",
-            input={"final_answer_length": len(state.final_answer) if state.final_answer else 0},
+            input={"final_answer_length": ans_len},
         ):
             result = self._critic.run(state)
         return result.model_dump()
@@ -95,12 +98,12 @@ class MultiAgentWorkflow:
         if not route_history:
             return "researcher"
 
-        last_route = route_history[-1]
+        last_route = str(route_history[-1])
         if last_route == "done":
             return "critic"  # Run critic before finishing
         return last_route  # researcher / analyst / writer
 
-    def build(self) -> StateGraph:
+    def build(self) -> Any:
         """Create a LangGraph StateGraph with conditional routing.
 
         Graph flow:
@@ -108,7 +111,7 @@ class MultiAgentWorkflow:
             supervisor -> done -> critic -> END
         """
 
-        graph = StateGraph(dict)
+        graph: Any = StateGraph(dict)
 
         # Add nodes
         graph.add_node("supervisor", self._supervisor_node)
@@ -156,7 +159,7 @@ class MultiAgentWorkflow:
             attributes={"query": state.request.query},
             as_type="span",
             input={"query": state.request.query},
-        ) as root_span:
+        ):
             graph = self.build()
             compiled = graph.compile()
 

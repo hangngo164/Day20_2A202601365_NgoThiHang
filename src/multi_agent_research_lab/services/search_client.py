@@ -40,7 +40,7 @@ class SearchClient:
 
     def _tavily_search(self, query: str, max_results: int) -> list[SourceDocument]:
         """Search using Tavily API."""
-        from tavily import TavilyClient
+        from tavily import TavilyClient  # type: ignore[import-untyped]
 
         logger.info("Tavily search | query=%s | max_results=%d", query[:80], max_results)
         client = TavilyClient(api_key=self._api_key)
@@ -66,36 +66,46 @@ class SearchClient:
             SourceDocument(
                 title="Multi-Agent Systems: A Modern Approach",
                 url="https://example.com/multi-agent-systems",
-                snippet="Multi-agent systems (MAS) involve multiple autonomous agents interacting "
-                        "in a shared environment. Key challenges include coordination, "
-                        "communication, and conflict resolution between agents.",
+                snippet=(
+                    "Multi-agent systems (MAS) involve multiple autonomous agents interacting "
+                    "in a shared environment. Key challenges include coordination, "
+                    "communication, and conflict resolution between agents."
+                ),
             ),
             SourceDocument(
                 title="LangGraph: Building Stateful Multi-Agent Applications",
                 url="https://example.com/langgraph-guide",
-                snippet="LangGraph enables building stateful, multi-actor applications with LLMs. "
-                        "It extends LangChain with cyclic graphs, persistence, and human-in-the-loop.",
+                snippet=(
+                    "LangGraph enables building stateful, multi-actor applications with LLMs. "
+                    "It extends LangChain with cyclic graphs, persistence, and human-in-the-loop."
+                ),
             ),
             SourceDocument(
                 title="GraphRAG: Retrieval-Augmented Generation with Knowledge Graphs",
                 url="https://example.com/graphrag",
-                snippet="GraphRAG combines knowledge graphs with RAG pipelines to improve factual "
-                        "accuracy. Microsoft's implementation uses community summaries for "
-                        "global queries and entity-based retrieval for local queries.",
+                snippet=(
+                    "GraphRAG combines knowledge graphs with RAG pipelines to improve factual "
+                    "accuracy. Microsoft's implementation uses community summaries for "
+                    "global queries and entity-based retrieval for local queries."
+                ),
             ),
             SourceDocument(
                 title="Production Guardrails for LLM Agents",
                 url="https://example.com/guardrails",
-                snippet="Production LLM agents require guardrails including max iteration limits, "
-                        "timeout controls, input/output validation, retry with backoff, "
-                        "and comprehensive logging and tracing.",
+                snippet=(
+                    "Production LLM agents require guardrails including max iteration limits, "
+                    "timeout controls, input/output validation, retry with backoff, "
+                    "and comprehensive logging and tracing."
+                ),
             ),
             SourceDocument(
                 title="Benchmarking Agent Systems: Metrics and Methods",
                 url="https://example.com/benchmarking",
-                snippet="Effective agent benchmarking measures latency, cost, quality, "
-                        "citation coverage, and failure rate. Comparing single-agent vs "
-                        "multi-agent architectures reveals tradeoffs.",
+                snippet=(
+                    "Effective agent benchmarking measures latency, cost, quality, "
+                    "citation coverage, and failure rate. Comparing single-agent vs "
+                    "multi-agent architectures reveals tradeoffs."
+                ),
             ),
         ]
         return mock_data[:max_results]

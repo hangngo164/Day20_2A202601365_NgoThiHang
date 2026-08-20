@@ -7,8 +7,8 @@ from typing import Annotated
 import typer
 from pydantic import ValidationError
 from rich.console import Console
-from rich.panel import Panel
 from rich.markdown import Markdown
+from rich.panel import Panel
 
 from multi_agent_research_lab.core.config import get_settings
 from multi_agent_research_lab.core.errors import StudentTodoError
@@ -18,7 +18,10 @@ from multi_agent_research_lab.evaluation.benchmark import run_benchmark
 from multi_agent_research_lab.evaluation.report import render_markdown_report
 from multi_agent_research_lab.graph.workflow import MultiAgentWorkflow
 from multi_agent_research_lab.observability.logging import configure_logging
-from multi_agent_research_lab.observability.tracing import trace_span, flush_traces, get_current_trace_url
+from multi_agent_research_lab.observability.tracing import (
+    flush_traces,
+    trace_span,
+)
 from multi_agent_research_lab.services.llm_client import LLMClient
 from multi_agent_research_lab.services.storage import LocalArtifactStore
 
@@ -40,11 +43,13 @@ def _init() -> None:
 
 def _display_trace_info(trace_url: str | None) -> None:
     if trace_url:
-        console.print(Panel.fit(
-            f"[bold cyan]Langfuse Trace URL:[/bold cyan] [link={trace_url}]{trace_url}[/link]",
-            title="Observability",
-            border_style="magenta",
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Langfuse Trace URL:[/bold cyan] [link={trace_url}]{trace_url}[/link]",
+                title="Observability",
+                border_style="magenta",
+            )
+        )
 
 
 def _parse_query(query: str) -> ResearchQuery:
@@ -113,11 +118,13 @@ def baseline(
     if state.errors:
         console.print(Panel.fit("\n".join(state.errors), title="Errors", style="yellow"))
 
-    console.print(Panel.fit(
-        Markdown(state.final_answer or "No answer generated"),
-        title="Single-Agent Baseline Result",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            Markdown(state.final_answer or "No answer generated"),
+            title="Single-Agent Baseline Result",
+            border_style="green",
+        )
+    )
     trace_url = flush_traces()
     _display_trace_info(trace_url)
 
@@ -138,22 +145,26 @@ def multi_agent(
         raise typer.Exit(code=2) from exc
 
     # Show route history
-    console.print(Panel.fit(
-        " -> ".join(state.route_history) if state.route_history else "No routes",
-        title="Route History",
-        border_style="blue",
-    ))
+    console.print(
+        Panel.fit(
+            " -> ".join(state.route_history) if state.route_history else "No routes",
+            title="Route History",
+            border_style="blue",
+        )
+    )
 
     # Show errors if any
     if state.errors:
         console.print(Panel.fit("\n".join(state.errors), title="Errors", style="yellow"))
 
     # Show final answer
-    console.print(Panel.fit(
-        Markdown(state.final_answer or "No answer generated"),
-        title="Multi-Agent Result",
-        border_style="green",
-    ))
+    console.print(
+        Panel.fit(
+            Markdown(state.final_answer or "No answer generated"),
+            title="Multi-Agent Result",
+            border_style="green",
+        )
+    )
 
     # Show agent results summary
     for result in state.agent_results:
@@ -179,17 +190,13 @@ def benchmark(
 
     # Run baseline
     console.print("[dim]  Running single-agent baseline...[/dim]")
-    baseline_state, baseline_metrics = run_benchmark(
-        "single-agent-baseline", query, _run_baseline
-    )
+    baseline_state, baseline_metrics = run_benchmark("single-agent-baseline", query, _run_baseline)
     all_metrics.append(baseline_metrics)
     console.print(f"  Done in {baseline_metrics.latency_seconds:.2f}s\n")
 
     # Run multi-agent
     console.print("[dim]  Running multi-agent workflow...[/dim]")
-    multi_state, multi_metrics = run_benchmark(
-        "multi-agent-workflow", query, _run_multi_agent
-    )
+    multi_state, multi_metrics = run_benchmark("multi-agent-workflow", query, _run_multi_agent)
     all_metrics.append(multi_metrics)
     console.print(f"  Done in {multi_metrics.latency_seconds:.2f}s\n")
 

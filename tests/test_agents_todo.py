@@ -4,9 +4,7 @@ Replaces the skeleton guard test. These tests verify that agents produce
 expected outputs when given proper state, using mocked LLM/search clients.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from multi_agent_research_lab.agents import (
     AnalystAgent,
@@ -33,8 +31,8 @@ def _mock_llm_response(content: str = "Mock LLM response") -> LLMResponse:
 
 # --- Supervisor Tests ---
 
-class TestSupervisorAgent:
 
+class TestSupervisorAgent:
     @patch("multi_agent_research_lab.agents.supervisor.LLMClient")
     def test_routes_to_researcher_when_no_notes(self, mock_llm_cls):
         mock_llm_cls.return_value.complete.return_value = _mock_llm_response("researcher")
@@ -69,8 +67,8 @@ class TestSupervisorAgent:
 
 # --- Researcher Tests ---
 
-class TestResearcherAgent:
 
+class TestResearcherAgent:
     @patch("multi_agent_research_lab.agents.researcher.LLMClient")
     @patch("multi_agent_research_lab.agents.researcher.SearchClient")
     def test_populates_sources_and_notes(self, mock_search_cls, mock_llm_cls):
@@ -96,8 +94,8 @@ class TestResearcherAgent:
 
 # --- Analyst Tests ---
 
-class TestAnalystAgent:
 
+class TestAnalystAgent:
     @patch("multi_agent_research_lab.agents.analyst.LLMClient")
     def test_populates_analysis_notes(self, mock_llm_cls):
         mock_llm_cls.return_value.complete.return_value = _mock_llm_response("Key claims: ...")
@@ -116,8 +114,8 @@ class TestAnalystAgent:
 
 # --- Writer Tests ---
 
-class TestWriterAgent:
 
+class TestWriterAgent:
     @patch("multi_agent_research_lab.agents.writer.LLMClient")
     def test_populates_final_answer(self, mock_llm_cls):
         mock_llm_cls.return_value.complete.return_value = _mock_llm_response("Final answer here")
@@ -132,8 +130,8 @@ class TestWriterAgent:
 
 # --- Critic Tests ---
 
-class TestCriticAgent:
 
+class TestCriticAgent:
     @patch("multi_agent_research_lab.agents.critic.LLMClient")
     def test_reviews_final_answer(self, mock_llm_cls):
         mock_llm_cls.return_value.complete.return_value = _mock_llm_response(

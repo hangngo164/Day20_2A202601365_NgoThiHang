@@ -9,7 +9,8 @@ from multi_agent_research_lab.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
-WRITER_SYSTEM_PROMPT = """You are a professional research writer. Synthesize research notes and analysis into a clear, well-structured final response.
+WRITER_SYSTEM_PROMPT = """You are a professional research writer.
+Synthesize research notes and analysis into a clear, well-structured final response.
 
 Your response must:
 1. Be well-organized with clear sections and headings

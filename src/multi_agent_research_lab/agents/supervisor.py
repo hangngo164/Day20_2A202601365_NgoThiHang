@@ -10,12 +10,15 @@ from multi_agent_research_lab.services.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
-ROUTING_SYSTEM_PROMPT = """You are a research supervisor. Your job is to decide which agent should run next.
+ROUTING_SYSTEM_PROMPT = """You are a research supervisor.
+Your job is to decide which agent should run next.
 
 Available agents:
 - researcher: Searches the web and collects research notes. Use when research_notes is empty.
-- analyst: Analyzes research notes and extracts key insights. Use when research_notes exist but analysis_notes is empty.
-- writer: Writes the final answer from research and analysis. Use when both research_notes and analysis_notes exist but final_answer is empty.
+- analyst: Analyzes research notes and extracts key insights.
+  Use when research_notes exist but analysis_notes is empty.
+- writer: Writes the final answer from research and analysis.
+  Use when both research_notes and analysis_notes exist but final_answer is empty.
 - done: The task is complete. Use when final_answer exists.
 
 Rules:
@@ -44,7 +47,9 @@ class SupervisorAgent(BaseAgent):
 
         # Guard: max iterations
         if state.iteration >= self._settings.max_iterations:
-            logger.warning("Max iterations (%d) reached, forcing done", self._settings.max_iterations)
+            logger.warning(
+                "Max iterations (%d) reached, forcing done", self._settings.max_iterations
+            )
             state.record_route("done")
             if not state.final_answer:
                 state.final_answer = (

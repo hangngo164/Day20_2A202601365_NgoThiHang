@@ -15,12 +15,12 @@ from multi_agent_research_lab.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 # Global Langfuse client (lazy-initialized)
-_langfuse_client = None
-_langfuse_initialized = False
+_langfuse_client: Any = None
+_langfuse_initialized: bool = False
 _last_trace_url: str | None = None
 
 
-def _get_langfuse():
+def _get_langfuse() -> Any:
     """Lazily initialize and return the Langfuse client."""
     global _langfuse_client, _langfuse_initialized
 
@@ -82,7 +82,7 @@ def trace_span(
             try:
                 obs_cm = langfuse.start_as_current_observation(
                     name=name,
-                    as_type=as_type,  # type: ignore[arg-type]
+                    as_type=as_type,
                     input=input,
                     metadata=attributes or {},
                 )
